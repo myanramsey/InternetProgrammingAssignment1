@@ -5,12 +5,8 @@
 
 import java.net.*;
 import java.io.*;
-import java.util.Scanner;
 
 public class client {
-
-    static final int PORT = 7121; // port number (match server's)
-
     // socket and streams
     private Socket s = null;
     private BufferedReader in  = null;
@@ -36,7 +32,7 @@ public class client {
             // statistics tracking (used for round-trip time measurements)
             int measurementCount = 0;
             double minRTT = Double.MAX_VALUE;
-            double maxRTT = Double.MIN_VALUE;
+            double maxRTT = Double.NEGATIVE_INFINITY;
             double sumRTT = 0.0;
             double sumSqRTT = 0.0;
 
@@ -85,18 +81,15 @@ public class client {
                     if (rttMs > maxRTT) maxRTT = rttMs;
 
                     System.out.printf("Round-trip time: %.3f ms%n", rttMs);
-
-                    // print statistics after every 5 successful measurements
-                    if (measurementCount >= 5 && measurementCount % 5 == 0) {
-                        printStatistics(measurementCount, minRTT, maxRTT, sumRTT, sumSqRTT);
-                    }
                 }
             }
 
-            // print final statistics if we have at least one valid measurement
-            if (measurementCount > 0) {
+            // stats - requires at least 5 successful measurements
+            if (measurementCount >= 5) {
                 System.out.println("\n--- Final RTT Statistics ---");
                 printStatistics(measurementCount, minRTT, maxRTT, sumRTT, sumSqRTT);
+            } else if (measurementCount > 0) {
+                System.out.println("\nNot enough successful measurements for statistics (need at least 5, got " + measurementCount + ").");
             }
 
             // close all streams and socket
@@ -120,7 +113,7 @@ public class client {
      * @param sumSq sum of squares of all RTTs in ms^2
      */
     private void printStatistics(int count, double min, double max, double sum, double sumSq) {
-        double mean   = sum / count;
+        double mean = sum / count;
         // population std dev: sqrt(E[x^2] - (E[x])^2)
         double stdDev = Math.sqrt((sumSq / count) - (mean * mean));
 
@@ -147,10 +140,6 @@ public class client {
         } catch (NumberFormatException e) {
             System.out.println("Invalid port number: " + args[1]);
             return;
-        }
-
-        if (port != PORT) {
-            System.out.println("Warning: expected port " + PORT + ", got " + port);
         }
 
         new client(serverURL, port);
