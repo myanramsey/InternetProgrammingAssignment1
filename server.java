@@ -7,15 +7,13 @@ import java.io.*;
 
 public class server {
 
-    static final int PORT = 7121; // port number we decided on (last 4 of UFID)
-
     // socket for the server and the connected client
     private ServerSocket ss = null;
-    private Socket s        = null;
+    private Socket s = null;
 
     // 2way streams: in for reading from client, out for writing back
     private BufferedReader in  = null;
-    private PrintWriter    out = null;
+    private PrintWriter out = null;
 
     public server(int port) {  // this basically starts the server, accepts a client, and runs the loop
         try {
@@ -30,7 +28,7 @@ public class server {
             in  = new BufferedReader(new InputStreamReader(s.getInputStream()));
             out = new PrintWriter(s.getOutputStream(), true); // if true, auto flush
 
-            out.println("Hello!");    // assignment greeting for client
+            out.println("Hello!");  // assignment greeting for client
             String received = "";
 
             // keep loop reading from the client until they send "bye"
@@ -78,11 +76,13 @@ public class server {
     }
 
     public static void main(String[] args) {
-        // validate the correct port was passed in
-        if (args.length != 1 || Integer.parseInt(args[0]) != PORT) {
-            System.out.println("Usage: java server " + PORT);
+        // make sure a port number was passed in
+        if (args.length != 1) {
+            System.out.println("Try: java server [port_number]");
             return;
         }
-        new server(PORT);
+
+        int port = Integer.parseInt(args[0]);
+        new server(port);
     }
 }
