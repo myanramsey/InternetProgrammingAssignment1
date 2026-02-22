@@ -1,88 +1,113 @@
-/**
- * to run: java server [port_number]
- */
-
-import java.net.*;
 import java.io.*;
+import java.net.*;
 
+/**
+ * Server - Listens for client connections, validates alphabetic input,and returns capitalized strings.
+ *
+ * Startup: java server [port_number]
+ */
 public class server {
 
-    static final int PORT = 7121; // port number we decided on (last 4 of UFID)
+    public static void main(String[] args) {
+        // Validate command-line arguments
+        if (args.length != 1) {
+            System.out.println("Usage: java server [port_number]");
+            System.exit(1);
+        }
 
-    // socket for the server and the connected client
-    private ServerSocket ss = null;
-    private Socket s        = null;
-
-    // 2way streams: in for reading from client, out for writing back
-    private BufferedReader in  = null;
-    private PrintWriter    out = null;
-
-    public server(int port) {  // this basically starts the server, accepts a client, and runs the loop
+        int port = 0;
         try {
-            ss = new ServerSocket(port);
-            System.out.println("Server started");
-            System.out.println("Waiting for a client ...");
+            port = Integer.parseInt(args[0]);
+            if (port < 1 || port > 65535) {
+                System.out.println("Error: Port number must be between 1 and 65535.");
+                System.exit(1);
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Invalid port number.");
+            System.exit(1);
+        }
 
-            s = ss.accept();
-            System.out.println("Client accepted");
+        ServerSocket serverSocket = null;
+        Socket clientSocket = null;
 
-            // set up reader/writer on the client socket's streams
-            in  = new BufferedReader(new InputStreamReader(s.getInputStream()));
-            out = new PrintWriter(s.getOutputStream(), true); // if true, auto flush
+        try {
+            // Create server socket and bind to the specified port
+            serverSocket = new ServerSocket(port);
+            System.out.println("Capital Converter Server started on port " + port);
+            System.out.println("Waiting for client connection...");
 
-            out.println("Hello!");    // assignment greeting for client
-            String received = "";
+            // Accept a client connection (one client at a time)
+            clientSocket = serverSocket.accept();
+            System.out.println("Client connected: " + clientSocket.getInetAddress().getHostAddress());
 
-            // keep loop reading from the client until they send "bye"
-            while (!received.equalsIgnoreCase("bye")) {
-                try {
-                    received = in.readLine();
-                    System.out.println("Client: " + received);
+            // Set up input/output streams
+            BufferedReader in = new BufferedReader(
+                    new InputStreamReader(clientSocket.getInputStream()));
+            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
 
-                    // extra check for ignore/keyboard disconnect
-                    if (received.equalsIgnoreCase("bye")) {
-                        out.println("disconnected");
-                        break;
-                    }
+            // Send greeting to client
+            out.println("Hello!");
+            System.out.println("Sent: Hello!");
 
-                    // check if all characters are alphabets
-                    if (isAllAlphabets(received)) {
-                        out.println(received.toUpperCase()); // capitalize and send back
-                    } else {
-                        // ask them to retype it since its not a-zA-Z
-                        out.println("There are characters that are not alphabetical. Please retry.");
-                    }
+            // Main communication loop
+            String receivedMessage;
+            while ((receivedMessage = in.readLine()) != null) {
+                System.out.println("Received from client: " + receivedMessage);
 
-                } catch (IOException i) {
-                    System.out.println(i);
+                // Check for termination signal
+                if (receivedMessage.equalsIgnoreCase("bye")) {
+                    out.println("disconnected");
+                    System.out.println("Client sent 'bye'. Sending 'disconnected' and closing.");
+                    break;
+                }
+
+                // Validate that the string contains only alphabetic characters (a-z, A-Z)
+                if (isAllAlphabets(receivedMessage)) {
+                    // Convert to uppercase and send back
+                    String capitalized = receivedMessage.toUpperCase();
+                    out.println(capitalized);
+                    System.out.println("Sent capitalized: " + capitalized);
+                } else {
+                    // Send error message requesting retransmission
+                    out.println("ERROR: Invalid input. Please send alphabets only (a-z). Try again.");
+                    System.out.println("Invalid input detected. Requested retransmission.");
                 }
             }
 
-            System.out.println("Closing connection");
-            s.close();
-            in.close();
-            out.close();
-            ss.close();
-
-        } catch (IOException i) {
-            System.out.println(i);
+        } catch (IOException e) {
+            System.out.println("Server error: " + e.getMessage());
+        } finally {
+            // Graceful shutdown
+            try {
+                if (clientSocket != null && !clientSocket.isClosed()) {
+                    clientSocket.close();
+                    System.out.println("Client socket closed.");
+                }
+                if (serverSocket != null && !serverSocket.isClosed()) {
+                    serverSocket.close();
+                    System.out.println("Server socket closed. Server exiting.");
+                }
+            } catch (IOException e) {
+                System.out.println("Error closing sockets: " + e.getMessage());
+            }
         }
     }
 
-    private boolean isAllAlphabets(String str) { // only returns true if every char is a-z or A-Z
-        if (str == null || str.isEmpty()) return false;
+    /**
+     * Checks whether all characters in the string are alphabetic (a-z or A-Z).
+     *
+     * @param str the input string to validate
+     * @return true if all characters are alphabets, false otherwise
+     */
+    private static boolean isAllAlphabets(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
         for (char c : str.toCharArray()) {
-            if (!Character.isLetter(c)) return false;
+            if (!Character.isLetter(c)) {
+                return false;
+            }
         }
         return true;
-    }
-
-    public static void main(String[] args) {
-        // validate the correct port was passed in
-        if (args.length != 1 || Integer.parseInt(args[0]) != PORT) {
-            System.out.println("Usage: java server " + PORT);
-            return;
-        }
-        new server(PORT);
     }
 }
